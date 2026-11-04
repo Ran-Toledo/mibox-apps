@@ -4,9 +4,11 @@ A minimal Android TV task manager: Memory, CPU and Storage tabs, one row per app
 button (force-stop) on the right of every app that can be closed. Plain Java + Android framework,
 no AndroidX, built without Gradle. Package `dev.mibox.taskmanager`, minSdk 26.
 
-![Task Manager, Memory tab](docs/screenshot.png)
+| Memory | CPU | Storage |
+|---|---|---|
+| ![Memory tab](docs/screenshot.png) | ![CPU tab](docs/screenshot-cpu.png) | ![Storage tab](docs/screenshot-storage.png) |
 
-*Illustrative render of the Memory tab with made-up apps; replace with a capture from your device.*
+*Illustrative renders with made-up apps and numbers; replace with captures from your device.*
 
 ## How it gets the data
 A normal app can't see other apps' memory or CPU, or force-stop them. So the app connects to the
