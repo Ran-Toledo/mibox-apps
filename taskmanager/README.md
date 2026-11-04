@@ -10,7 +10,7 @@ no AndroidX, built without Gradle. Package `dev.mibox.taskmanager`, minSdk 26.
 
 ![Storage tab](docs/screenshot-storage.png)
 
-*Illustrative renders with made-up apps and numbers; replace with captures from your device.*
+*Captured on a Xiaomi Mi Box 4 (Android TV 12, system language Hebrew, so some system app names are in Hebrew).*
 
 ## How it gets the data
 A normal app can't see other apps' memory or CPU, or force-stop them. So the app connects to the
