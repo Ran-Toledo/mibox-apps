@@ -18,12 +18,13 @@ device's own adb service on `127.0.0.1:5555` (network debugging must be enabled)
 
 | Tab | Source | Refresh |
 |---|---|---|
-| Memory | `/proc/meminfo` (available), `dumpsys meminfo` (PSS per app), `dumpsys activity lru` (state) | 10 s |
-| CPU | `top -b -n 1 -d 2` (% of all cores), thermal zone 0 (°C), uptime | 3 s |
+| Memory | `/proc/meminfo` (available), `dumpsys -t 30 meminfo` (PSS per app; takes ~10 s, so the default 10 s dump timeout is raised), `dumpsys activity lru` (state) | 10 s |
+| CPU | `top -b -n 1 -d 2` (% of all cores), `dumpsys thermalservice` (°C; shell can't read `/sys/class/thermal`), uptime | 3 s |
 | Storage | `StatFs` on `/data`, `StorageStatsManager` per app (app + data + cache) | 60 s |
 
 Close runs `am force-stop <package>`. System apps, the home launcher, the app on screen and this
-app have no Close button. Nothing runs while the screen isn't visible.
+app have no Close button. Nothing runs while the screen isn't visible. A tab shows a loading indicator until its
+first result arrives, then keeps showing its last result while the next one is read.
 
 **First start:** the TV shows "Allow network debugging?" for the key `taskmanager@mibox`. Tick
 "Always allow" and accept. The app also grants itself the usage-stats app op (for Storage) over

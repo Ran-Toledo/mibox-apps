@@ -52,6 +52,8 @@ final class Device {
     }
 
     private static final String SEP = "@@TASKMANAGER@@";
+    // The quotes keep SEP itself out of the command line, which top prints in its ARGS column.
+    private static final String ECHO_SEP = "echo @@TASK''MANAGER@@";
 
     // Packages that keep the box usable; never offered for closing (same list as running-apps.ps1).
     private static final Set<String> PROTECTED = new HashSet<>(Arrays.asList(
@@ -77,6 +79,8 @@ final class Device {
         NATIVE_NAMES.put("zygote", "App launcher (zygote)");
         NATIVE_NAMES.put("logd", "Logging");
         NATIVE_NAMES.put("kernel", "Kernel threads");
+        // Java programs started from adb shell, e.g. the scrcpy server.
+        NATIVE_NAMES.put("app_process", "Shell tools (scrcpy)");
     }
 
     private static final Pattern LRU = Pattern.compile(
@@ -118,7 +122,7 @@ final class Device {
         }
     }
 
-    private KeyPair keys() throws GeneralSecurityException, IOException {
+    private synchronized KeyPair keys() throws GeneralSecurityException, IOException {
         File priv = new File(context.getFilesDir(), "adbkey");
         File pub = new File(context.getFilesDir(), "adbkey.pub");
         KeyFactory kf = KeyFactory.getInstance("RSA");
@@ -137,8 +141,9 @@ final class Device {
     // --- tabs --------------------------------------------------------------
 
     Snapshot memory() throws IOException, GeneralSecurityException {
-        String[] parts = exec("cat /proc/meminfo; echo " + SEP + "; dumpsys activity lru; echo " + SEP
-                + "; dumpsys meminfo").split(SEP);
+        String[] parts = exec("cat /proc/meminfo; " + ECHO_SEP + "; dumpsys activity lru; " + ECHO_SEP
+                // dumpsys gives a service 10 s by default; meminfo takes ~10 s here and sometimes ran out.
+                + "; dumpsys -t 30 meminfo").split(SEP);
         long total = 0, avail = 0;
         for (String line : lines(part(parts, 0))) {
             if (line.startsWith("MemTotal:")) total = firstNumber(line);
@@ -162,6 +167,11 @@ final class Device {
             }
         }
 
+        if (mbByKey.isEmpty()) {
+            String raw = part(parts, 2);
+            android.util.Log.w("TaskManager", "memory: no PSS rows; parts=" + parts.length + " len=" + raw.length()
+                    + " head=" + raw.substring(0, Math.min(400, raw.length())).replace('\n', '|'));
+        }
         Snapshot s = new Snapshot();
         s.summary = String.format("%,d MB available of %.1f GB", avail / 1024, total / 1024.0 / 1024.0);
         s.fraction = total > 0 ? 1.0 - (double) avail / total : 0;
@@ -173,8 +183,8 @@ final class Device {
     }
 
     Snapshot cpu() throws IOException, GeneralSecurityException {
-        String[] parts = exec("top -b -n 1 -d 2 -m 20; echo " + SEP
-                + "; cat /sys/class/thermal/thermal_zone0/temp; echo " + SEP + "; dumpsys activity lru").split(SEP);
+        String[] parts = exec("top -b -n 1 -d 2 -m 20; " + ECHO_SEP
+                + "; dumpsys thermalservice | grep -m 1 'Temperature{'; " + ECHO_SEP + "; dumpsys activity lru").split(SEP);
         int cores = 1;
         double busy = 0;
         Map<String, Double> pctByKey = new HashMap<>();
@@ -205,8 +215,12 @@ final class Device {
 
         String temp = "";
         try {
-            temp = String.format(" · %d °C", Math.round(Long.parseLong(part(parts, 1).trim()) / 1000.0));
+            // shell can't read /sys/class/thermal on this box; thermalservice prints "mValue=62.000004".
+            Matcher t = Pattern.compile("mValue=([\\d.]+)").matcher(part(parts, 1));
+            if (t.find()) temp = String.format(" · %d °C", Math.round(Double.parseDouble(t.group(1))));
         } catch (NumberFormatException ignored) { }
+        if (temp.isEmpty()) android.util.Log.w("TaskManager", "cpu: no temperature; parts=" + parts.length
+                + " part1=[" + part(parts, 1).replace('\n', '|') + "]");
 
         Map<String, String> stateByPkg = states(part(parts, 2));
         String home = homePackage();
@@ -257,7 +271,13 @@ final class Device {
 
     void forceStop(String pkg) throws IOException, GeneralSecurityException {
         if (!pkg.matches("[A-Za-z0-9_.]+")) throw new IOException("Bad package name");
-        exec("am force-stop " + pkg);
+        // Own short connection, so a Close doesn't wait behind a refresh (dumpsys meminfo takes ~10 s).
+        AdbClient c = new AdbClient("127.0.0.1", 5555, keys(), "taskmanager@mibox", 120000, onPrompt);
+        try {
+            c.exec("am force-stop " + pkg);
+        } finally {
+            c.close();
+        }
     }
 
     // --- helpers -----------------------------------------------------------
@@ -325,7 +345,8 @@ final class Device {
         int colon = process.indexOf(':');
         String p = colon > 0 ? process.substring(0, colon) : process;
         int slash = p.lastIndexOf('/');
-        return slash >= 0 ? p.substring(slash + 1) : p;
+        p = slash >= 0 ? p.substring(slash + 1) : p;
+        return p.equals("media.swcodec") ? "media.codec" : p; // one "Media codecs" row
     }
 
     private boolean isInstalled(String pkg) {

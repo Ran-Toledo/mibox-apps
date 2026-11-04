@@ -12,6 +12,7 @@ import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Looper;
 import android.view.Gravity;
+import android.view.KeyEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.LinearLayout;
@@ -32,6 +33,10 @@ public class MainActivity extends Activity {
 
     private static final String[] TABS = {"Memory", "CPU", "Storage"};
     private static final long[] INTERVAL_MS = {10000, 3000, 60000};
+    private static final String[][] LOADING = {
+            {"Reading memory usage…", "Android measures every running app; this takes about 10 s"},
+            {"Measuring CPU usage…", "Sampling all processes for 2 s"},
+            {"Adding up app storage…", "Reading app, data and cache sizes"}};
     private static final String[] FOOTER = {"Updates every 10 s", "Average over 2 s", "App + data + cache"};
 
     private Device device;
@@ -46,6 +51,7 @@ public class MainActivity extends Activity {
     private View parking;
 
     private int tab = 0;
+    private final Device.Snapshot[] last = new Device.Snapshot[TABS.length]; // last result per tab
     private int generation = 0;   // bumps on every tab switch so stale results are dropped
     private boolean visible;
 
@@ -115,15 +121,37 @@ public class MainActivity extends Activity {
     }
 
     private void closeApp(Device.Row row) {
-        worker.post(() -> {
+        new Thread(() -> {
             try {
                 device.forceStop(row.key);
-                ui.post(() -> Toast.makeText(this, "Closed " + row.label, Toast.LENGTH_SHORT).show());
+                ui.post(() -> {
+                    Toast.makeText(this, "Closed " + row.label, Toast.LENGTH_SHORT).show();
+                    removeRow(row.key);
+                });
             } catch (Exception e) {
                 ui.post(() -> Toast.makeText(this, "Couldn't close " + row.label, Toast.LENGTH_SHORT).show());
             }
             ui.post(this::refreshNow);
-        });
+        }, "close").start();
+    }
+
+    /** Drops a closed app's row at once (the next refresh can take 10 s), moving focus to its neighbour. */
+    private void removeRow(String key) {
+        for (Device.Snapshot snap : last) {
+            if (snap == null) continue;
+            for (java.util.Iterator<Device.Row> it = snap.rows.iterator(); it.hasNext(); ) {
+                if (it.next().key.equals(key)) it.remove();
+            }
+        }
+        for (int i = 0; i < list.getChildCount(); i++) {
+            View v = list.getChildAt(i);
+            if (v.getTag() instanceof Device.Row && ((Device.Row) v.getTag()).key.equals(key)) {
+                View next = i + 1 < list.getChildCount() ? list.getChildAt(i + 1) : i > 0 ? list.getChildAt(i - 1) : tabViews[tab];
+                if (v.hasFocus()) next.requestFocus();
+                list.removeViewAt(i);
+                return;
+            }
+        }
     }
 
     // --- rendering ---------------------------------------------------------
@@ -136,17 +164,23 @@ public class MainActivity extends Activity {
             tabViews[i].getPaint().setFakeBoldText(i == t);
             tabViews[i].invalidate();
         }
-        footer.setText("↑↓ Move    ←→ Row / Close button    OK Close    " + FOOTER[t]);
+        footer.setText((t == 2 ? "↑↓ Move    " : "↑↓ Move    ←→ Row / Close button    OK Close    ") + FOOTER[t]);
         summary.setText("");
         totalBar.setFraction(0);
         list.removeAllViews();
-        addMessage("Loading…");
+        // Show this tab's last result until the next refresh; the spinner only when there is none yet.
+        if (last[t] != null) show(last[t]);
+        else addLoading(LOADING[t][0], LOADING[t][1]);
         refreshNow();
     }
 
     private void show(Device.Snapshot s) {
+        if (!s.rows.isEmpty()) last[tab] = s;
         summary.setText(s.summary);
         totalBar.setFraction(s.fraction);
+        // An occasional empty dump (e.g. two dumpsys meminfo at once) keeps the last list instead of blanking it.
+        boolean hasRows = list.getChildCount() > 0 && list.getChildAt(0).getTag() instanceof Device.Row;
+        if (s.rows.isEmpty() && hasRows) return;
 
         // Remember the focused row (and whether its Close button had focus), then rebuild.
         String focusKey = null;
@@ -209,7 +243,13 @@ public class MainActivity extends Activity {
         row.setBackground(selector(SURFACE, ACCENT, 0));
         row.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
 
-        row.addView(text(r.label, 15, TEXT), new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
+        TextView label = text(r.label, 15, TEXT);
+        // Hebrew labels would otherwise align right and run into the state column.
+        label.setTextDirection(View.TEXT_DIRECTION_LTR);
+        label.setTextAlignment(View.TEXT_ALIGNMENT_GRAVITY);
+        label.setGravity(Gravity.LEFT | Gravity.CENTER_VERTICAL);
+        label.setPadding(0, 0, dp(12), 0);
+        row.addView(label, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
         row.addView(text(r.state, 12, SECONDARY), new LinearLayout.LayoutParams(dp(120), ViewGroup.LayoutParams.WRAP_CONTENT));
         TextView value = text(format(r.value), 15, TEXT);
         value.setGravity(Gravity.END);
@@ -231,6 +271,11 @@ public class MainActivity extends Activity {
             close.setBackground(selector(DANGER_BG, DANGER, TRACK));
             close.setOnFocusChangeListener((v, has) -> close.setTextColor(has ? DANGER : SECONDARY));
             close.setOnClickListener(v -> closeApp(r));
+            // Focus search ignores views inside the focused one, so move between row and button by hand.
+            row.setOnKeyListener((v, code, ev) -> code == KeyEvent.KEYCODE_DPAD_RIGHT
+                    && ev.getAction() == KeyEvent.ACTION_DOWN && close.requestFocus());
+            close.setOnKeyListener((v, code, ev) -> code == KeyEvent.KEYCODE_DPAD_LEFT
+                    && ev.getAction() == KeyEvent.ACTION_DOWN && row.requestFocus());
         }
         row.addView(close, closeLp);
         return row;
@@ -240,6 +285,28 @@ public class MainActivity extends Activity {
         if (tab == 1) return v < 0.5 ? "<1%" : Math.round(v) + "%";
         if (tab == 2 && v >= 1000) return String.format("%.1f GB", v / 1024);
         return Math.round(v) + " MB";
+    }
+
+    /** Spinner with a title and a hint, shown until a tab's first result arrives. */
+    private void addLoading(String title, String hint) {
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.HORIZONTAL);
+        box.setGravity(Gravity.CENTER_VERTICAL);
+        box.setPadding(dp(12), dp(16), 0, 0);
+
+        android.widget.ProgressBar spinner = new android.widget.ProgressBar(this, null, android.R.attr.progressBarStyleSmall);
+        spinner.setIndeterminate(true);
+        spinner.setIndeterminateTintList(android.content.res.ColorStateList.valueOf(ACCENT));
+        box.addView(spinner, new LinearLayout.LayoutParams(dp(28), dp(28)));
+
+        LinearLayout texts = new LinearLayout(this);
+        texts.setOrientation(LinearLayout.VERTICAL);
+        texts.addView(text(title, 16, TEXT));
+        texts.addView(text(hint, 12, MUTED));
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        lp.leftMargin = dp(16);
+        box.addView(texts, lp);
+        list.addView(box);
     }
 
     private void addMessage(String msg) {

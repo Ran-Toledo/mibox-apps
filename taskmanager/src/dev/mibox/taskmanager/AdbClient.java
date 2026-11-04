@@ -105,7 +105,7 @@ final class AdbClient implements Closeable {
                     throw new IOException("Debugging prompt was declined");
                 }
             }
-            socket.setSoTimeout(30000);
+            socket.setSoTimeout(60000); // longer than the 30 s dumpsys timeout used for meminfo
         } catch (IOException | GeneralSecurityException | RuntimeException e) {
             close();
             throw e;
