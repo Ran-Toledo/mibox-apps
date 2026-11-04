@@ -1,0 +1,10 @@
+build/
+*.apk
+*.aab
+*.dex
+*.keystore
+*.jks
+local.properties
+.idea/
+.vscode/
+*.log

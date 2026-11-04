@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Simple Screensaver</string>
+    <string name="dream_label">Simple Screensaver</string>
+    <!-- Text shown until the user changes it in settings. \n starts a new line. -->
+    <string name="default_text">{time}\n{date}</string>
+</resources>

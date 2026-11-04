@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="dev.mibox.taskmanager">
+
+    <uses-feature android:name="android.software.leanback" android:required="false" />
+    <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
+
+    <!-- Socket to the box's own adbd on 127.0.0.1:5555. -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <!-- App labels for every running package. -->
+    <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />
+    <!-- Per-app storage sizes; the app op is granted over the adb connection on first use. -->
+    <uses-permission android:name="android.permission.PACKAGE_USAGE_STATS" />
+
+    <application
+        android:allowBackup="false"
+        android:banner="@drawable/banner"
+        android:icon="@drawable/banner"
+        android:label="@string/app_name"
+        android:theme="@android:style/Theme.DeviceDefault.NoActionBar">
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:screenOrientation="landscape">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>
