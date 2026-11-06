@@ -4,78 +4,78 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.os.Handler;
 import android.os.Looper;
-import android.text.format.DateFormat;
-import android.util.TypedValue;
 import android.view.Gravity;
+import android.view.View;
 import android.widget.FrameLayout;
-import android.widget.TextView;
 
-import java.util.Date;
 import java.util.Random;
 
 /**
- * Solid background with one large, centered text block.
- * Supports {time} and {date} tokens and an optional slow drift to avoid burn-in.
+ * Hosts the active ScreenMode on a solid background, ticks it every 15 s and, if enabled,
+ * drifts it slowly to avoid burn-in.
  */
 final class SaverView extends FrameLayout {
     private static final long TICK_MS = 15_000;
     private static final int DRIFT_EVERY_TICKS = 4;
+    /** Drift range for full-screen modes, as a fraction of the screen size. */
+    private static final float FULL_SCREEN_DRIFT = 0.02f;
 
-    private final TextView text;
     private final Handler handler = new Handler(Looper.getMainLooper());
     private final Random random = new Random();
-    private String template;
+    private final ScreenMode mode;
     private boolean drift;
     private int ticks;
 
     private final Runnable tick = new Runnable() {
         @Override
         public void run() {
-            refreshText();
-            if (drift && ++ticks % DRIFT_EVERY_TICKS == 0) moveText();
+            mode.tick();
+            if (drift && ++ticks % DRIFT_EVERY_TICKS == 0) moveContent();
             handler.postDelayed(this, TICK_MS);
         }
     };
 
     SaverView(Context context) {
         super(context);
-        text = new TextView(context);
-        text.setGravity(Gravity.CENTER);
-        addView(text, new LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT, Gravity.CENTER));
-        applyPrefs(Prefs.get(context));
-    }
-
-    void applyPrefs(SharedPreferences p) {
-        template = Prefs.text(getContext()).replace("\\n", "\n");
+        SharedPreferences p = Prefs.get(context);
+        mode = createMode(context, p);
+        LayoutParams lp = mode.fillsScreen()
+                ? new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT)
+                : new LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT, Gravity.CENTER);
+        addView(mode.view(), lp);
         drift = p.getBoolean(Prefs.DRIFT, true);
         setBackgroundColor(Prefs.color(p.getString(Prefs.BG, Prefs.DEFAULT_BG), Prefs.DEFAULT_BG));
-        text.setTextColor(Prefs.color(p.getString(Prefs.FG, Prefs.DEFAULT_FG), Prefs.DEFAULT_FG));
-        text.setTextSize(TypedValue.COMPLEX_UNIT_SP, p.getInt(Prefs.SIZE, Prefs.DEFAULT_SIZE));
-        text.setTypeface(Prefs.typeface(p));
-        refreshText();
+        mode.applyPrefs(p);
+    }
+
+    private static ScreenMode createMode(Context context, SharedPreferences p) {
+        return new ClockMode(context);
     }
 
     void start() {
+        mode.start();
         handler.removeCallbacks(tick);
-        handler.post(tick);
+        handler.postDelayed(tick, TICK_MS);
     }
 
     void stop() {
         handler.removeCallbacks(tick);
+        mode.stop();
     }
 
-    private void refreshText() {
-        Date now = new Date();
-        text.setText(template
-                .replace("{time}", DateFormat.getTimeFormat(getContext()).format(now))
-                .replace("{date}", DateFormat.getLongDateFormat(getContext()).format(now)));
-    }
-
-    /** Moves the text to a random spot that keeps it fully on screen. */
-    private void moveText() {
-        float maxX = Math.max(0, (getWidth() - text.getWidth()) / 2f) * 0.9f;
-        float maxY = Math.max(0, (getHeight() - text.getHeight()) / 2f) * 0.9f;
-        text.animate()
+    /** Moves the mode's view to a random offset that keeps it on screen. */
+    private void moveContent() {
+        View content = mode.view();
+        float maxX;
+        float maxY;
+        if (mode.fillsScreen()) {
+            maxX = getWidth() * FULL_SCREEN_DRIFT;
+            maxY = getHeight() * FULL_SCREEN_DRIFT;
+        } else {
+            maxX = Math.max(0, (getWidth() - content.getWidth()) / 2f) * 0.9f;
+            maxY = Math.max(0, (getHeight() - content.getHeight()) / 2f) * 0.9f;
+        }
+        content.animate()
                 .translationX((random.nextFloat() * 2 - 1) * maxX)
                 .translationY((random.nextFloat() * 2 - 1) * maxY)
                 .setDuration(3000)
