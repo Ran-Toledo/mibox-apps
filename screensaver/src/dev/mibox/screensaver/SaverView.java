@@ -49,6 +49,9 @@ final class SaverView extends FrameLayout {
     }
 
     private static ScreenMode createMode(Context context, SharedPreferences p) {
+        if (Prefs.MODE_WEATHER.equals(p.getString(Prefs.MODE, Prefs.MODE_CLOCK))) {
+            return new WeatherMode(context, p);
+        }
         return new ClockMode(context);
     }
 

@@ -1,6 +1,6 @@
 # Simple Screensaver
 
-A minimal Android TV screensaver (`DreamService`): a solid background with large text and a clock.
+A minimal Android TV screensaver (`DreamService`): a solid background with large text and a clock, or the weather.
 Plain Java + Android framework, no AndroidX, built without Gradle. Package `dev.mibox.screensaver`, minSdk 26.
 
 ![Screensaver with the default time and date](docs/screenshot.png)
@@ -13,10 +13,20 @@ Plain Java + Android framework, no AndroidX, built without Gradle. Package `dev.
 - Font: any built-in Android font family (Roboto thin/light/medium/black, condensed, serif, monospace, casual, cursive, small caps), plus bold
 - Optional slow drift of the text to prevent burn-in (on by default), optional dimming
 - Settings screen usable with the D-pad, plus "Save and preview"
+- **Weather mode** (Show → Weather): current conditions, today's high/low and when rain starts, in one of two layouts:
+  - *Clock first*: your text as above, with one weather line under it
+  - *Full forecast board*: big temperature, next 3 days, next 6 hours with rain chance, small clock
 
-Concepts for Weather and Now Playing modes: [docs/concepts](docs/concepts/).
+  Location is found by city name in the settings (or set over adb), units °C/°F. Data from
+  [Open-Meteo](https://open-meteo.com) (free, no API key, CC BY 4.0; credited on screen). The forecast is fetched only
+  while the screensaver runs, at most every 30 min, and cached; when offline the last forecast is shown with
+  "Updated N h ago", for up to 12 h. Needs the `INTERNET` permission. Measured on a Mi Box S: about 36 MB while running
+  (clock mode: 30 MB, of which 16 MB is the screen buffer).
 
-Defaults: `{time}\n{date}`, white on black, size 96, Roboto regular, drift on, dim off.
+Design concepts for the Weather and Now Playing modes: [docs/concepts](docs/concepts/).
+
+Defaults: `{time}\n{date}`, white on black, size 96, Roboto regular, drift on, dim off, mode Clock;
+weather: no location, °C, clock-first layout.
 
 ## Build
 Requires the Android SDK (platforms\android-34, build-tools\34.0.0) and two JDKs: 21 and 17 (javac only).
@@ -43,6 +53,12 @@ Open "Simple Screensaver" from the apps row on the TV, or over adb (run from `cm
 adb shell am start -n dev.mibox.screensaver/.SettingsActivity --es text "Good night\n{time}" --es fg "#FFB300" --es bg "#101830" --ei size 120 --ez drift true --ez dim false --es font sans-serif-light --ez bold false
 ```
 `font` takes any family name from the device's `/system/etc/fonts.xml`; unknown names fall back to Roboto.
+
+Weather:
+```
+adb shell am start -n dev.mibox.screensaver/.SettingsActivity --es mode weather --ef lat 32.08 --ef lon 34.78 --es place "Tel Aviv" --es units c --es wx_layout board
+```
+`mode` is `clock` or `weather`; `units` `c` or `f`; `wx_layout` `glance` (clock first) or `board`.
 The settings activity is exported so adb can configure it; any app on the device could do the same. It only changes
 display preferences.
 

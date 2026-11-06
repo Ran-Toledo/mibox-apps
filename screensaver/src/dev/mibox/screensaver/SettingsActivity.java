@@ -1,6 +1,8 @@
 package dev.mibox.screensaver;
 
 import android.app.Activity;
+import android.app.AlertDialog;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.graphics.Typeface;
@@ -27,6 +29,7 @@ import java.util.List;
  * D-pad friendly settings screen. Also accepts adb extras, which are saved without showing the UI:
  *   am start -n dev.mibox.screensaver/.SettingsActivity --es text 'Hello\nWorld' --es fg '#FFFFFF'
  *       --es bg '#000000' --ei size 120 --ez drift true --ez dim false --es font sans-serif-light --ez bold false
+ *       --es mode weather --ef lat 32.81 --ef lon 35.0 --es place Haifa --es units c --es wx_layout glance
  */
 public class SettingsActivity extends Activity {
     private static final String[] COLOR_NAMES = {
@@ -46,7 +49,19 @@ public class SettingsActivity extends Activity {
             "sans-serif-condensed", "sans-serif-condensed-light", "serif", "monospace", "serif-monospace",
             "casual", "cursive", "sans-serif-smallcaps"};
 
+    private static final String[] MODE_NAMES = {"Clock (text above)", "Weather"};
+    private static final String[] MODE_VALUES = {Prefs.MODE_CLOCK, Prefs.MODE_WEATHER};
+    private static final String[] UNIT_NAMES = {"Celsius (°C)", "Fahrenheit (°F)"};
+    private static final String[] UNIT_VALUES = {Prefs.UNITS_C, Prefs.UNITS_F};
+    private static final String[] LAYOUT_NAMES = {"Clock first, one weather line", "Full forecast board"};
+    private static final String[] LAYOUT_VALUES = {Prefs.LAYOUT_GLANCE, Prefs.LAYOUT_BOARD};
+
     private SharedPreferences prefs;
+    private Spinner mode;
+    private Spinner units;
+    private Spinner wxLayout;
+    private TextView placeLabel;
+    private EditText city;
     private EditText text;
     private Spinner fg;
     private Spinner bg;
@@ -85,6 +100,14 @@ public class SettingsActivity extends Activity {
         if (e.containsKey(Prefs.DIM)) { ed.putBoolean(Prefs.DIM, e.getBoolean(Prefs.DIM)); any = true; }
         if (e.containsKey(Prefs.FONT)) { ed.putString(Prefs.FONT, e.getString(Prefs.FONT)); any = true; }
         if (e.containsKey(Prefs.BOLD)) { ed.putBoolean(Prefs.BOLD, e.getBoolean(Prefs.BOLD)); any = true; }
+        if (e.containsKey(Prefs.MODE)) { ed.putString(Prefs.MODE, e.getString(Prefs.MODE)); any = true; }
+        if (e.containsKey(Prefs.WX_LAT) && e.containsKey(Prefs.WX_LON)) {
+            ed.putFloat(Prefs.WX_LAT, e.getFloat(Prefs.WX_LAT)).putFloat(Prefs.WX_LON, e.getFloat(Prefs.WX_LON));
+            ed.putString(Prefs.WX_PLACE, e.containsKey(Prefs.WX_PLACE) ? e.getString(Prefs.WX_PLACE) : "");
+            any = true;
+        }
+        if (e.containsKey(Prefs.WX_UNITS)) { ed.putString(Prefs.WX_UNITS, e.getString(Prefs.WX_UNITS)); any = true; }
+        if (e.containsKey(Prefs.WX_LAYOUT)) { ed.putString(Prefs.WX_LAYOUT, e.getString(Prefs.WX_LAYOUT)); any = true; }
         ed.apply();
         return any;
     }
@@ -99,6 +122,10 @@ public class SettingsActivity extends Activity {
         title.setText(R.string.app_name);
         title.setTextSize(28);
         col.addView(title);
+
+        col.addView(label("Show"));
+        mode = choice(MODE_NAMES, MODE_VALUES, prefs.getString(Prefs.MODE, Prefs.MODE_CLOCK));
+        col.addView(mode, wide());
 
         col.addView(label("Text  ({time} and {date} are replaced; new line = Enter)"));
         text = new EditText(this);
@@ -138,6 +165,36 @@ public class SettingsActivity extends Activity {
         dim.setText("Dim the screen while active");
         dim.setChecked(prefs.getBoolean(Prefs.DIM, false));
         col.addView(dim);
+
+        TextView wxTitle = new TextView(this);
+        wxTitle.setText("Weather");
+        wxTitle.setTextSize(22);
+        wxTitle.setPadding(0, dp(28), 0, 0);
+        col.addView(wxTitle);
+        placeLabel = label("");
+        showPlace();
+        col.addView(placeLabel);
+        LinearLayout search = new LinearLayout(this);
+        city = new EditText(this);
+        city.setHint("City name");
+        city.setSingleLine(true);
+        search.addView(city, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
+        Button find = new Button(this);
+        find.setText("Find");
+        find.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                findCity(city.getText().toString());
+            }
+        });
+        search.addView(find);
+        col.addView(search, wide());
+        col.addView(label("Units"));
+        units = choice(UNIT_NAMES, UNIT_VALUES, prefs.getString(Prefs.WX_UNITS, Prefs.UNITS_C));
+        col.addView(units, wide());
+        col.addView(label("Weather layout"));
+        wxLayout = choice(LAYOUT_NAMES, LAYOUT_VALUES, prefs.getString(Prefs.WX_LAYOUT, Prefs.LAYOUT_GLANCE));
+        col.addView(wxLayout, wide());
 
         LinearLayout buttons = new LinearLayout(this);
         buttons.setGravity(Gravity.START);
@@ -179,6 +236,9 @@ public class SettingsActivity extends Activity {
                 .putBoolean(Prefs.DIM, dim.isChecked())
                 .putString(Prefs.FONT, fontValues.get(font.getSelectedItemPosition()))
                 .putBoolean(Prefs.BOLD, bold.isChecked())
+                .putString(Prefs.MODE, MODE_VALUES[mode.getSelectedItemPosition()])
+                .putString(Prefs.WX_UNITS, UNIT_VALUES[units.getSelectedItemPosition()])
+                .putString(Prefs.WX_LAYOUT, LAYOUT_VALUES[wxLayout.getSelectedItemPosition()])
                 .apply();
         Toast.makeText(this, "Saved", Toast.LENGTH_SHORT).show();
     }
@@ -231,6 +291,77 @@ public class SettingsActivity extends Activity {
         });
         s.setSelection(index);
         return s;
+    }
+
+    /** A fixed list of options; an unknown saved value selects the first. */
+    private Spinner choice(String[] names, String[] values, String current) {
+        Spinner s = new Spinner(this, Spinner.MODE_DIALOG);
+        s.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, names));
+        s.setSelection(Math.max(0, Arrays.asList(values).indexOf(current)));
+        return s;
+    }
+
+    private void showPlace() {
+        String place = prefs.getString(Prefs.WX_PLACE, "");
+        if (!Prefs.hasLocation(prefs)) {
+            placeLabel.setText("Location: not set. Type a city and press Find.");
+        } else {
+            placeLabel.setText("Location: " + (place.isEmpty()
+                    ? prefs.getFloat(Prefs.WX_LAT, 0) + ", " + prefs.getFloat(Prefs.WX_LON, 0) : place));
+        }
+    }
+
+    /** Looks the city up on a background thread, then lets the user pick a match; the pick is saved at once. */
+    private void findCity(final String name) {
+        if (name.trim().isEmpty()) return;
+        placeLabel.setText("Searching…");
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                List<WeatherClient.Place> found = null;
+                try {
+                    found = WeatherClient.search(name);
+                } catch (Exception ignored) {
+                    // Reported as a failed search below.
+                }
+                final List<WeatherClient.Place> result = found;
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        if (isFinishing()) return;
+                        showPlace();
+                        if (result == null) {
+                            Toast.makeText(SettingsActivity.this, "Search failed (no connection?)", Toast.LENGTH_LONG).show();
+                        } else if (result.isEmpty()) {
+                            Toast.makeText(SettingsActivity.this, "No place found for: " + name, Toast.LENGTH_LONG).show();
+                        } else {
+                            pickPlace(result);
+                        }
+                    }
+                });
+            }
+        }, "city-search").start();
+    }
+
+    private void pickPlace(final List<WeatherClient.Place> places) {
+        String[] labels = new String[places.size()];
+        for (int i = 0; i < labels.length; i++) labels[i] = places.get(i).label;
+        new AlertDialog.Builder(this)
+                .setTitle("Choose the location")
+                .setItems(labels, new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        WeatherClient.Place p = places.get(which);
+                        prefs.edit()
+                                .putFloat(Prefs.WX_LAT, (float) p.lat)
+                                .putFloat(Prefs.WX_LON, (float) p.lon)
+                                .putString(Prefs.WX_PLACE, p.label.split(",")[0])
+                                .apply();
+                        showPlace();
+                        Toast.makeText(SettingsActivity.this, "Location saved: " + p.label, Toast.LENGTH_SHORT).show();
+                    }
+                })
+                .show();
     }
 
     private static int indexOfIgnoreCase(List<String> list, String value) {

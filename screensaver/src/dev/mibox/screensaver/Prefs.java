@@ -15,6 +15,23 @@ final class Prefs {
     static final String DIM = "dim";
     static final String FONT = "font";
     static final String BOLD = "bold";
+    static final String MODE = "mode";
+    static final String WX_LAT = "lat";
+    static final String WX_LON = "lon";
+    static final String WX_PLACE = "place";
+    static final String WX_UNITS = "units";
+    static final String WX_LAYOUT = "wx_layout";
+    /** Last forecast response (JSON), the location/units it was fetched for, and when. */
+    static final String WX_JSON = "wx_json";
+    static final String WX_KEY = "wx_key";
+    static final String WX_AT = "wx_at";
+
+    static final String MODE_CLOCK = "clock";
+    static final String MODE_WEATHER = "weather";
+    static final String UNITS_C = "c";
+    static final String UNITS_F = "f";
+    static final String LAYOUT_GLANCE = "glance";
+    static final String LAYOUT_BOARD = "board";
 
     static final String DEFAULT_FG = "#FFFFFF";
     static final String DEFAULT_BG = "#000000";
@@ -49,5 +66,14 @@ final class Prefs {
     static Typeface typeface(SharedPreferences p) {
         String family = p.getString(FONT, DEFAULT_FONT);
         return Typeface.create(family, p.getBoolean(BOLD, false) ? Typeface.BOLD : Typeface.NORMAL);
+    }
+
+    static boolean hasLocation(SharedPreferences p) {
+        return p.contains(WX_LAT) && p.contains(WX_LON);
+    }
+
+    /** Identifies what a cached forecast was fetched for; a mismatch means it must be refetched. */
+    static String weatherKey(SharedPreferences p) {
+        return p.getFloat(WX_LAT, 0) + "," + p.getFloat(WX_LON, 0) + "," + p.getString(WX_UNITS, UNITS_C);
     }
 }
