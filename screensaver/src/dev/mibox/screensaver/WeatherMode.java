@@ -26,7 +26,7 @@ import java.util.Locale;
 
 /**
  * Weather from Open-Meteo, in one of two layouts:
- * "glance" (the clock text with one weather line under it) or "board" (full-screen forecast).
+ * "glance" (the Text mode text with one weather line under it) or "board" (full-screen forecast).
  * The last forecast is cached in prefs; a new one is fetched only while the screensaver runs.
  */
 final class WeatherMode implements ScreenMode {
@@ -190,7 +190,7 @@ final class WeatherMode implements ScreenMode {
             clock.setText(DateFormat.getTimeFormat(context).format(nowDate));
             date.setText(DateFormat.getLongDateFormat(context).format(nowDate));
         } else {
-            clock.setText(ClockMode.expand(context, template));
+            clock.setText(TextMode.expand(context, template));
         }
 
         String problem = problem();
@@ -323,7 +323,7 @@ final class WeatherMode implements ScreenMode {
         template = Prefs.text(context).replace("\\n", "\n");
     }
 
-    /** Clock text as in ClockMode, then a divider and one weather line. */
+    /** The text as in TextMode, then a divider and one weather line. */
     private View buildGlance() {
         LinearLayout col = vertical(Gravity.CENTER_HORIZONTAL);
         clock = text(prefs.getInt(Prefs.SIZE, Prefs.DEFAULT_SIZE), fg);

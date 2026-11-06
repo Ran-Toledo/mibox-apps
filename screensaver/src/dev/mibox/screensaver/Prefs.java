@@ -32,7 +32,7 @@ final class Prefs {
     static final String WX_KEY = "wx_key";
     static final String WX_AT = "wx_at";
 
-    static final String MODE_CLOCK = "clock";
+    static final String MODE_TEXT = "text";
     static final String MODE_WEATHER = "weather";
     static final String UNITS_C = "c";
     static final String UNITS_F = "f";
@@ -72,6 +72,11 @@ final class Prefs {
     static Typeface typeface(SharedPreferences p) {
         String family = p.getString(FONT, DEFAULT_FONT);
         return Typeface.create(family, p.getBoolean(BOLD, false) ? Typeface.BOLD : Typeface.NORMAL);
+    }
+
+    /** MODE_TEXT or MODE_WEATHER; anything else (including "clock" from v1.3/v1.4) is Text. */
+    static String mode(SharedPreferences p) {
+        return MODE_WEATHER.equals(p.getString(MODE, MODE_TEXT)) ? MODE_WEATHER : MODE_TEXT;
     }
 
     static boolean hasLocation(SharedPreferences p) {

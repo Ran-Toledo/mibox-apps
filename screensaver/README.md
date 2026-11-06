@@ -1,6 +1,6 @@
 # Simple Screensaver
 
-A minimal Android TV screensaver (`DreamService`): a solid background with large text and a clock, or the weather.
+A minimal Android TV screensaver (`DreamService`): large text (with optional time and date) on a solid background, or the weather.
 Plain Java + Android framework, no AndroidX, built without Gradle. Package `dev.mibox.screensaver`, minSdk 26.
 
 ![Screensaver with the default time and date](docs/screenshot.png)
@@ -8,13 +8,13 @@ Plain Java + Android framework, no AndroidX, built without Gradle. Package `dev.
 *Illustrative render using the default settings (white `{time}` / `{date}` on black); replace with a capture from your device.*
 
 ## Features
-- Text with `{time}` and `{date}` placeholders (refreshed every 15 s); `\n` or Enter for new lines
+- **Text mode** (Show → Text, the default): your text with `{time}` and `{date}` placeholders (refreshed every 15 s); `\n` or Enter for new lines
 - Text color, background color (presets, or any `#RRGGBB` via adb), text size
 - Font: any built-in Android font family (Roboto thin/light/medium/black, condensed, serif, monospace, casual, cursive, small caps), plus bold
 - Optional slow drift of the text to prevent burn-in (on by default), optional dimming
 - Settings screen usable with the D-pad, plus "Save and preview"
 - **Weather mode** (Show → Weather): current conditions, today's high/low and when rain starts, in one of two layouts:
-  - *Clock first*: your text as above, with one weather line under it
+  - *Your text first*: the Text mode text, with one weather line under it
   - *Full forecast board*: big temperature, next 3 days, next 6 hours with rain chance, small clock
 
   Location is found by city name in the settings (or set over adb), units °C/°F. Data from
@@ -22,7 +22,7 @@ Plain Java + Android framework, no AndroidX, built without Gradle. Package `dev.
   while the screensaver runs, at most every 30 min, and cached; when offline the last forecast is shown with
   "Updated N h ago", for up to 12 h. The city name shows under the conditions with a location pin.
   Needs the `INTERNET` permission. Measured on a Mi Box S: about 36 MB while running
-  (clock mode: 30 MB, of which 16 MB is the screen buffer).
+  (Text mode: 30 MB, of which 16 MB is the screen buffer).
 
 - **Weather photo backgrounds** (Weather background → Photos): a photo matching the current weather (clear/partly
   cloudy by day or night, cloudy, fog, rain, storm, snow), picked at random from a pool and changed every 10 min
@@ -38,8 +38,8 @@ Plain Java + Android framework, no AndroidX, built without Gradle. Package `dev.
 
 Design concepts for the Weather and Now Playing modes: [docs/concepts](docs/concepts/).
 
-Defaults: `{time}\n{date}`, white on black, size 96, Roboto regular, drift on, dim off, mode Clock;
-weather: no location, °C, clock-first layout.
+Defaults: `{time}\n{date}`, white on black, size 96, Roboto regular, drift on, dim off, mode Text;
+weather: no location, °C, text-first layout.
 
 ## Build
 Requires the Android SDK (platforms\android-34, build-tools\34.0.0) and two JDKs: 21 and 17 (javac only).
@@ -71,7 +71,7 @@ Weather:
 ```
 adb shell am start -n dev.mibox.screensaver/.SettingsActivity --es mode weather --ef lat 32.08 --ef lon 34.78 --es place "Tel Aviv" --es units c --es wx_layout board
 ```
-`mode` is `clock` or `weather`; `units` `c` or `f`; `wx_layout` `glance` (clock first) or `board`;
+`mode` is `text` or `weather`; `units` `c` or `f`; `wx_layout` `glance` (text first) or `board`;
 `--es bg_style photo` (or `solid`) and `--ei bg_minutes 10` for the photo background.
 The settings activity is exported so adb can configure it; any app on the device could do the same. It only changes
 display preferences.

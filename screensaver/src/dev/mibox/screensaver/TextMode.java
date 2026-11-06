@@ -10,13 +10,13 @@ import android.widget.TextView;
 
 import java.util.Date;
 
-/** The original screensaver: one text block with {time} and {date} tokens. */
-final class ClockMode implements ScreenMode {
+/** The original screensaver, "Text" in the settings: one text block with {time} and {date} tokens. */
+final class TextMode implements ScreenMode {
     private final Context context;
     private final TextView text;
     private String template = "";
 
-    ClockMode(Context context) {
+    TextMode(Context context) {
         this.context = context;
         text = new TextView(context);
         text.setGravity(Gravity.CENTER);

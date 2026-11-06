@@ -50,11 +50,11 @@ public class SettingsActivity extends Activity {
             "sans-serif-condensed", "sans-serif-condensed-light", "serif", "monospace", "serif-monospace",
             "casual", "cursive", "sans-serif-smallcaps"};
 
-    private static final String[] MODE_NAMES = {"Clock (text above)", "Weather"};
-    private static final String[] MODE_VALUES = {Prefs.MODE_CLOCK, Prefs.MODE_WEATHER};
+    private static final String[] MODE_NAMES = {"Text", "Weather"};
+    private static final String[] MODE_VALUES = {Prefs.MODE_TEXT, Prefs.MODE_WEATHER};
     private static final String[] UNIT_NAMES = {"Celsius (°C)", "Fahrenheit (°F)"};
     private static final String[] UNIT_VALUES = {Prefs.UNITS_C, Prefs.UNITS_F};
-    private static final String[] LAYOUT_NAMES = {"Clock first, one weather line", "Full forecast board"};
+    private static final String[] LAYOUT_NAMES = {"Your text, with one weather line under it", "Full forecast board"};
     private static final String[] LAYOUT_VALUES = {Prefs.LAYOUT_GLANCE, Prefs.LAYOUT_BOARD};
 
     private static final String[] BG_STYLE_NAMES = {"Solid color (above)", "Photos matching the weather (rotating)"};
@@ -136,7 +136,7 @@ public class SettingsActivity extends Activity {
         col.addView(title);
 
         col.addView(label("Show"));
-        mode = choice(MODE_NAMES, MODE_VALUES, prefs.getString(Prefs.MODE, Prefs.MODE_CLOCK));
+        mode = choice(MODE_NAMES, MODE_VALUES, Prefs.mode(prefs));
         col.addView(mode, wide());
 
         col.addView(label("Text  ({time} and {date} are replaced; new line = Enter)"));
