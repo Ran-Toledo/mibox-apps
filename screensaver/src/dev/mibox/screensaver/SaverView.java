@@ -51,6 +51,7 @@ final class SaverView extends FrameLayout {
         setBackgroundColor(Prefs.color(p.getString(Prefs.BG, Prefs.DEFAULT_BG), Prefs.DEFAULT_BG));
         text.setTextColor(Prefs.color(p.getString(Prefs.FG, Prefs.DEFAULT_FG), Prefs.DEFAULT_FG));
         text.setTextSize(TypedValue.COMPLEX_UNIT_SP, p.getInt(Prefs.SIZE, Prefs.DEFAULT_SIZE));
+        text.setTypeface(Prefs.typeface(p));
         refreshText();
     }
 

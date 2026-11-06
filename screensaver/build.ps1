@@ -19,8 +19,8 @@ param(
     # javac from JDK 21 with -target 8 produces anonymous classes that d8 34.0.0 crashes on,
     # so compile with JDK 17 (d8/apksigner still run on $Jdk).
     [string]$CompileJdk = $env:JDK17_HOME,
-    [int]$VersionCode = 2,
-    [string]$VersionName = '1.1'
+    [int]$VersionCode = 3,
+    [string]$VersionName = '1.2'
 )
 
 $ErrorActionPreference = 'Stop'

@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Weather, clock first</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@100;300;400;500&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#9FC3E8}a:hover{color:#CFE2F5}
+</style>
+</helmet>
+<div style="width: 1280px; height: 720px; box-sizing: border-box; background: #000000; color: #E8EEF5; font-family: Roboto, sans-serif; display: flex; align-items: center; justify-content: center">
+  <div style="display: flex; flex-direction: column; align-items: center; gap: 18px">
+    <div style="font-size: 220px; font-weight: 100; line-height: 1; letter-spacing: -4px">10:42</div>
+    <div style="font-size: 28px; font-weight: 300; color: #9AAABB">Friday, 6 November</div>
+    <div style="display: flex; align-items: center; gap: 22px; margin-top: 28px; padding-top: 28px; border-top: 1px solid #1E2A36">
+      <svg width="56" height="56" viewBox="0 0 48 48" fill="none" stroke="#F5C76A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <circle cx="18" cy="17" r="7"></circle>
+        <path d="M18 4v3M5 17h3M28 17h3M8.8 7.8l2.1 2.1M27.3 7.8l-2.1 2.1"></path>
+        <path d="M16 40h21a7 7 0 0 0 0-14 9 9 0 0 0-17 3 5.5 5.5 0 0 0-4 11z" stroke="#C9D6E3" fill="#000000"></path>
+      </svg>
+      <div style="font-size: 56px; font-weight: 300">18°</div>
+      <div style="display: flex; flex-direction: column; gap: 4px">
+        <div style="font-size: 24px; font-weight: 400">Partly cloudy</div>
+        <div style="font-size: 20px; font-weight: 300; color: #7FB2E5">Rain from 16:00  ·  H 21° L 12°</div>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":720}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

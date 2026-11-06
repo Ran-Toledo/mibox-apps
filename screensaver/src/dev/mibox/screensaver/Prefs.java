@@ -3,6 +3,7 @@ package dev.mibox.screensaver;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.graphics.Color;
+import android.graphics.Typeface;
 
 /** Screensaver configuration, stored in SharedPreferences. */
 final class Prefs {
@@ -12,10 +13,14 @@ final class Prefs {
     static final String SIZE = "size";
     static final String DRIFT = "drift";
     static final String DIM = "dim";
+    static final String FONT = "font";
+    static final String BOLD = "bold";
 
     static final String DEFAULT_FG = "#FFFFFF";
     static final String DEFAULT_BG = "#000000";
     static final int DEFAULT_SIZE = 96;
+    /** A system font family name, as listed in /system/etc/fonts.xml. */
+    static final String DEFAULT_FONT = "sans-serif";
 
     private Prefs() {}
 
@@ -35,5 +40,14 @@ final class Prefs {
         } catch (RuntimeException e) {
             return Color.parseColor(fallback);
         }
+    }
+
+    /**
+     * Saved font family plus bold flag. Unknown family names fall back to the default
+     * sans-serif inside Typeface.create, so a bad adb value can't break the screensaver.
+     */
+    static Typeface typeface(SharedPreferences p) {
+        String family = p.getString(FONT, DEFAULT_FONT);
+        return Typeface.create(family, p.getBoolean(BOLD, false) ? Typeface.BOLD : Typeface.NORMAL);
     }
 }

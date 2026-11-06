@@ -3,6 +3,7 @@ package dev.mibox.screensaver;
 import android.app.Activity;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.graphics.Typeface;
 import android.os.Bundle;
 import android.text.InputType;
 import android.view.Gravity;
@@ -25,7 +26,7 @@ import java.util.List;
 /**
  * D-pad friendly settings screen. Also accepts adb extras, which are saved without showing the UI:
  *   am start -n dev.mibox.screensaver/.SettingsActivity --es text 'Hello\nWorld' --es fg '#FFFFFF'
- *       --es bg '#000000' --ei size 120 --ez drift true --ez dim false
+ *       --es bg '#000000' --ei size 120 --ez drift true --ez dim false --es font sans-serif-light --ez bold false
  */
 public class SettingsActivity extends Activity {
     private static final String[] COLOR_NAMES = {
@@ -35,6 +36,15 @@ public class SettingsActivity extends Activity {
             "#000000", "#FFFFFF", "#202020", "#0B1F4B", "#101830", "#7A0F0F",
             "#0F4D2A", "#3B1A5A", "#E8711A", "#FFB300", "#00796B", "#FFB6C1"};
     private static final Integer[] SIZES = {48, 64, 80, 96, 120, 160, 200, 260};
+    /** System font families shipped with Android 8+ (see /system/etc/fonts.xml). */
+    private static final String[] FONT_NAMES = {
+            "Sans (Roboto)", "Sans thin", "Sans light", "Sans medium", "Sans black",
+            "Condensed", "Condensed light", "Serif", "Monospace", "Serif monospace",
+            "Casual", "Cursive", "Small caps"};
+    private static final String[] FONT_VALUES = {
+            "sans-serif", "sans-serif-thin", "sans-serif-light", "sans-serif-medium", "sans-serif-black",
+            "sans-serif-condensed", "sans-serif-condensed-light", "serif", "monospace", "serif-monospace",
+            "casual", "cursive", "sans-serif-smallcaps"};
 
     private SharedPreferences prefs;
     private EditText text;
@@ -43,6 +53,9 @@ public class SettingsActivity extends Activity {
     private Spinner size;
     private CheckBox drift;
     private CheckBox dim;
+    private Spinner font;
+    private CheckBox bold;
+    private List<String> fontValues;
     private List<String> fgValues;
     private List<String> bgValues;
 
@@ -70,6 +83,8 @@ public class SettingsActivity extends Activity {
         if (e.containsKey(Prefs.SIZE)) { ed.putInt(Prefs.SIZE, e.getInt(Prefs.SIZE, Prefs.DEFAULT_SIZE)); any = true; }
         if (e.containsKey(Prefs.DRIFT)) { ed.putBoolean(Prefs.DRIFT, e.getBoolean(Prefs.DRIFT)); any = true; }
         if (e.containsKey(Prefs.DIM)) { ed.putBoolean(Prefs.DIM, e.getBoolean(Prefs.DIM)); any = true; }
+        if (e.containsKey(Prefs.FONT)) { ed.putString(Prefs.FONT, e.getString(Prefs.FONT)); any = true; }
+        if (e.containsKey(Prefs.BOLD)) { ed.putBoolean(Prefs.BOLD, e.getBoolean(Prefs.BOLD)); any = true; }
         ed.apply();
         return any;
     }
@@ -105,6 +120,15 @@ public class SettingsActivity extends Activity {
         size.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, SIZES));
         size.setSelection(Math.max(0, Arrays.asList(SIZES).indexOf(prefs.getInt(Prefs.SIZE, Prefs.DEFAULT_SIZE))));
         col.addView(size, wide());
+
+        col.addView(label("Font"));
+        fontValues = new ArrayList<>(Arrays.asList(FONT_VALUES));
+        font = fontSpinner(fontValues, prefs.getString(Prefs.FONT, Prefs.DEFAULT_FONT));
+        col.addView(font, wide());
+        bold = new CheckBox(this);
+        bold.setText("Bold");
+        bold.setChecked(prefs.getBoolean(Prefs.BOLD, false));
+        col.addView(bold);
 
         drift = new CheckBox(this);
         drift.setText("Move text slowly (prevents burn-in)");
@@ -153,6 +177,8 @@ public class SettingsActivity extends Activity {
                 .putInt(Prefs.SIZE, SIZES[size.getSelectedItemPosition()])
                 .putBoolean(Prefs.DRIFT, drift.isChecked())
                 .putBoolean(Prefs.DIM, dim.isChecked())
+                .putString(Prefs.FONT, fontValues.get(font.getSelectedItemPosition()))
+                .putBoolean(Prefs.BOLD, bold.isChecked())
                 .apply();
         Toast.makeText(this, "Saved", Toast.LENGTH_SHORT).show();
     }
@@ -168,6 +194,41 @@ public class SettingsActivity extends Activity {
         }
         Spinner s = new Spinner(this, Spinner.MODE_DIALOG);
         s.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, names));
+        s.setSelection(index);
+        return s;
+    }
+
+    /**
+     * Font picker; each entry is drawn in its own typeface so it doubles as a preview.
+     * A custom family set via adb is kept as an extra entry.
+     */
+    private Spinner fontSpinner(final List<String> values, String current) {
+        List<String> names = new ArrayList<>(Arrays.asList(FONT_NAMES));
+        int index = values.indexOf(current);
+        if (index < 0) {
+            values.add(current);
+            names.add("Custom (" + current + ")");
+            index = values.size() - 1;
+        }
+        Spinner s = new Spinner(this, Spinner.MODE_DIALOG);
+        s.setAdapter(new ArrayAdapter<String>(this, android.R.layout.simple_spinner_dropdown_item, names) {
+            @Override
+            public View getView(int position, View convertView, ViewGroup parent) {
+                return styled(super.getView(position, convertView, parent), position);
+            }
+
+            @Override
+            public View getDropDownView(int position, View convertView, ViewGroup parent) {
+                return styled(super.getDropDownView(position, convertView, parent), position);
+            }
+
+            private View styled(View v, int position) {
+                if (v instanceof TextView) {
+                    ((TextView) v).setTypeface(Typeface.create(values.get(position), Typeface.NORMAL));
+                }
+                return v;
+            }
+        });
         s.setSelection(index);
         return s;
     }
