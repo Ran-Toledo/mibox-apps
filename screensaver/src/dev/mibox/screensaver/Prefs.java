@@ -15,6 +15,12 @@ final class Prefs {
     static final String DIM = "dim";
     static final String FONT = "font";
     static final String BOLD = "bold";
+    /** Weather mode background: BG_SOLID (the color above) or BG_PHOTO (rotating weather photos). */
+    static final String BG_STYLE = "bg_style";
+    static final String BG_MINUTES = "bg_minutes";
+    static final String BG_SOLID = "solid";
+    static final String BG_PHOTO = "photo";
+    static final int DEFAULT_BG_MINUTES = 10;
     static final String MODE = "mode";
     static final String WX_LAT = "lat";
     static final String WX_LON = "lon";

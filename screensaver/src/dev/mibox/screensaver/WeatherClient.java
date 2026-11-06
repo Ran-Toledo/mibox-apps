@@ -67,20 +67,28 @@ final class WeatherClient {
     }
 
     private static String get(String url) throws IOException {
-        HttpURLConnection c = (HttpURLConnection) new URL(url).openConnection();
-        c.setConnectTimeout(TIMEOUT_MS);
-        c.setReadTimeout(TIMEOUT_MS);
-        c.setRequestProperty("User-Agent", "SimpleScreensaver");
+        InputStream in = open(url);
         try {
-            int code = c.getResponseCode();
-            if (code != 200) throw new IOException("HTTP " + code);
-            InputStream in = c.getInputStream();
             ByteArrayOutputStream out = new ByteArrayOutputStream();
             byte[] buf = new byte[8192];
             for (int n; (n = in.read(buf)) > 0; ) out.write(buf, 0, n);
             return out.toString("UTF-8");
         } finally {
-            c.disconnect();
+            in.close();
         }
+    }
+
+    /** GET with timeouts; the caller must close the stream. Also used for background photos. */
+    static InputStream open(String url) throws IOException {
+        HttpURLConnection c = (HttpURLConnection) new URL(url).openConnection();
+        c.setConnectTimeout(TIMEOUT_MS);
+        c.setReadTimeout(TIMEOUT_MS);
+        c.setRequestProperty("User-Agent", "SimpleScreensaver");
+        int code = c.getResponseCode();
+        if (code != 200) {
+            c.disconnect();
+            throw new IOException("HTTP " + code);
+        }
+        return c.getInputStream();
     }
 }

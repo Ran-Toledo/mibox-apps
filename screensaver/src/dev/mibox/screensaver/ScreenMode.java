@@ -14,6 +14,11 @@ interface ScreenMode {
     /** True if view() should fill the screen; false to center it at its natural size. */
     boolean fillsScreen();
 
+    /** Optional full-screen layer drawn behind view() and not drifted (e.g. a photo); null for none. */
+    default View background() {
+        return null;
+    }
+
     /** Reads settings; called once before start(). */
     void applyPrefs(SharedPreferences p);
 

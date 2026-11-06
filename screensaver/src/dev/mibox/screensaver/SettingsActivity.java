@@ -30,6 +30,7 @@ import java.util.List;
  *   am start -n dev.mibox.screensaver/.SettingsActivity --es text 'Hello\nWorld' --es fg '#FFFFFF'
  *       --es bg '#000000' --ei size 120 --ez drift true --ez dim false --es font sans-serif-light --ez bold false
  *       --es mode weather --ef lat 32.81 --ef lon 35.0 --es place Haifa --es units c --es wx_layout glance
+ *       --es bg_style photo --ei bg_minutes 10
  */
 public class SettingsActivity extends Activity {
     private static final String[] COLOR_NAMES = {
@@ -56,7 +57,13 @@ public class SettingsActivity extends Activity {
     private static final String[] LAYOUT_NAMES = {"Clock first, one weather line", "Full forecast board"};
     private static final String[] LAYOUT_VALUES = {Prefs.LAYOUT_GLANCE, Prefs.LAYOUT_BOARD};
 
+    private static final String[] BG_STYLE_NAMES = {"Solid color (above)", "Photos matching the weather (rotating)"};
+    private static final String[] BG_STYLE_VALUES = {Prefs.BG_SOLID, Prefs.BG_PHOTO};
+    private static final Integer[] BG_MINUTES = {5, 10, 15, 30, 60};
+
     private SharedPreferences prefs;
+    private Spinner bgStyle;
+    private Spinner bgMinutes;
     private Spinner mode;
     private Spinner units;
     private Spinner wxLayout;
@@ -108,6 +115,11 @@ public class SettingsActivity extends Activity {
         }
         if (e.containsKey(Prefs.WX_UNITS)) { ed.putString(Prefs.WX_UNITS, e.getString(Prefs.WX_UNITS)); any = true; }
         if (e.containsKey(Prefs.WX_LAYOUT)) { ed.putString(Prefs.WX_LAYOUT, e.getString(Prefs.WX_LAYOUT)); any = true; }
+        if (e.containsKey(Prefs.BG_STYLE)) { ed.putString(Prefs.BG_STYLE, e.getString(Prefs.BG_STYLE)); any = true; }
+        if (e.containsKey(Prefs.BG_MINUTES)) {
+            ed.putInt(Prefs.BG_MINUTES, e.getInt(Prefs.BG_MINUTES, Prefs.DEFAULT_BG_MINUTES));
+            any = true;
+        }
         ed.apply();
         return any;
     }
@@ -195,6 +207,15 @@ public class SettingsActivity extends Activity {
         col.addView(label("Weather layout"));
         wxLayout = choice(LAYOUT_NAMES, LAYOUT_VALUES, prefs.getString(Prefs.WX_LAYOUT, Prefs.LAYOUT_GLANCE));
         col.addView(wxLayout, wide());
+        col.addView(label("Weather background (photos: free Unsplash images, downloaded as needed; text turns white)"));
+        bgStyle = choice(BG_STYLE_NAMES, BG_STYLE_VALUES, prefs.getString(Prefs.BG_STYLE, Prefs.BG_SOLID));
+        col.addView(bgStyle, wide());
+        col.addView(label("Change photo every (minutes)"));
+        bgMinutes = new Spinner(this, Spinner.MODE_DIALOG);
+        bgMinutes.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, BG_MINUTES));
+        bgMinutes.setSelection(Math.max(0, Arrays.asList(BG_MINUTES).indexOf(
+                prefs.getInt(Prefs.BG_MINUTES, Prefs.DEFAULT_BG_MINUTES))));
+        col.addView(bgMinutes, wide());
 
         LinearLayout buttons = new LinearLayout(this);
         buttons.setGravity(Gravity.START);
@@ -239,6 +260,8 @@ public class SettingsActivity extends Activity {
                 .putString(Prefs.MODE, MODE_VALUES[mode.getSelectedItemPosition()])
                 .putString(Prefs.WX_UNITS, UNIT_VALUES[units.getSelectedItemPosition()])
                 .putString(Prefs.WX_LAYOUT, LAYOUT_VALUES[wxLayout.getSelectedItemPosition()])
+                .putString(Prefs.BG_STYLE, BG_STYLE_VALUES[bgStyle.getSelectedItemPosition()])
+                .putInt(Prefs.BG_MINUTES, BG_MINUTES[bgMinutes.getSelectedItemPosition()])
                 .apply();
         Toast.makeText(this, "Saved", Toast.LENGTH_SHORT).show();
     }

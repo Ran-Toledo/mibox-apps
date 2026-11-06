@@ -39,6 +39,10 @@ final class SaverView extends FrameLayout {
         super(context);
         SharedPreferences p = Prefs.get(context);
         mode = createMode(context, p);
+        View background = mode.background();
+        if (background != null) {
+            addView(background, new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
+        }
         LayoutParams lp = mode.fillsScreen()
                 ? new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT)
                 : new LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT, Gravity.CENTER);

@@ -43,6 +43,8 @@ final class WeatherMode implements ScreenMode {
     private final boolean board;
     private final Handler handler = new Handler(Looper.getMainLooper());
     private final View root;
+    /** Null unless the background style is weather photos. */
+    private final PhotoBackground photos;
 
     private Typeface typeface;
     private int fg;
@@ -66,8 +68,8 @@ final class WeatherMode implements ScreenMode {
     private TextView message;
     // Glance only
     private View weatherBox;
-    // Board only
     private TextView place;
+    // Board only
     private TextView updated;
     private TextView date;
     private View forecast;
@@ -79,6 +81,8 @@ final class WeatherMode implements ScreenMode {
         this.context = context;
         this.prefs = p;
         board = Prefs.LAYOUT_BOARD.equals(p.getString(Prefs.WX_LAYOUT, Prefs.LAYOUT_GLANCE));
+        photos = Prefs.BG_PHOTO.equals(p.getString(Prefs.BG_STYLE, Prefs.BG_SOLID))
+                ? new PhotoBackground(context, p.getInt(Prefs.BG_MINUTES, Prefs.DEFAULT_BG_MINUTES)) : null;
         readStyle(p);
         root = board ? buildBoard() : buildGlance();
     }
@@ -91,6 +95,11 @@ final class WeatherMode implements ScreenMode {
     @Override
     public boolean fillsScreen() {
         return board;
+    }
+
+    @Override
+    public View background() {
+        return photos == null ? null : photos.view();
     }
 
     @Override
@@ -107,6 +116,7 @@ final class WeatherMode implements ScreenMode {
 
     @Override
     public void start() {
+        if (photos != null) photos.start();
         maybeFetch();
         render();
     }
@@ -115,11 +125,13 @@ final class WeatherMode implements ScreenMode {
     public void tick() {
         maybeFetch();
         render();
+        if (photos != null) photos.tick();
     }
 
     @Override
     public void stop() {
         generation++;
+        if (photos != null) photos.stop();
     }
 
     // ---- Fetching ----
@@ -177,7 +189,6 @@ final class WeatherMode implements ScreenMode {
         if (board) {
             clock.setText(DateFormat.getTimeFormat(context).format(nowDate));
             date.setText(DateFormat.getLongDateFormat(context).format(nowDate));
-            place.setText(prefs.getString(Prefs.WX_PLACE, ""));
         } else {
             clock.setText(ClockMode.expand(context, template));
         }
@@ -196,6 +207,10 @@ final class WeatherMode implements ScreenMode {
         Weather w = weather;
         Weather.Day today = w.days.isEmpty() ? null : w.days.get(0);
         icon.setImageResource(iconFor(w.code, w.isDay));
+        if (photos != null) photos.setKind(backgroundKind(w.code, w.isDay));
+        String placeName = prefs.getString(Prefs.WX_PLACE, "");
+        place.setText(placeName);
+        ((View) place.getParent()).setVisibility(placeName.isEmpty() ? View.GONE : View.VISIBLE);
         temp.setText(w.temp + "°");
         condition.setText(Weather.label(w.code));
         String hiLo = today == null ? "" : "H " + today.hi + "°  ·  L " + today.lo + "°";
@@ -265,6 +280,19 @@ final class WeatherMode implements ScreenMode {
         return "Updated " + DateFormat.getTimeFormat(context).format(new Date(fetchedAt));
     }
 
+    /** The photo pool for the current weather; keys as in res/raw/backgrounds.json. */
+    static String backgroundKind(int code, boolean day) {
+        switch (Weather.kind(code)) {
+            case CLEAR: return day ? "clear_day" : "clear_night";
+            case PARTLY: return day ? "partly_day" : "partly_night";
+            case CLOUDY: return "cloudy";
+            case FOG: return "fog";
+            case SNOW: return "snow";
+            case STORM: return "storm";
+            default: return "rain";
+        }
+    }
+
     private String precipSummary(Weather w, long now) {
         if (Weather.isWet(Weather.kind(w.code))) return Weather.precipWord(w.code) + " now";
         Weather.Hour h = w.nextWetHour(now);
@@ -289,7 +317,8 @@ final class WeatherMode implements ScreenMode {
 
     private void readStyle(SharedPreferences p) {
         typeface = Prefs.typeface(p);
-        fg = Prefs.color(p.getString(Prefs.FG, Prefs.DEFAULT_FG), Prefs.DEFAULT_FG);
+        // Over a photo (under a dark scrim) only white text is reliably readable.
+        fg = photos != null ? Color.WHITE : Prefs.color(p.getString(Prefs.FG, Prefs.DEFAULT_FG), Prefs.DEFAULT_FG);
         dim = Color.argb(0xA6, Color.red(fg), Color.green(fg), Color.blue(fg));
         template = Prefs.text(context).replace("\\n", "\n");
     }
@@ -333,6 +362,7 @@ final class WeatherMode implements ScreenMode {
         credit.setPadding(0, dp(4), 0, 0);
         lines.addView(condition);
         lines.addView(detail);
+        lines.addView(placeRow(15, 16));
         lines.addView(credit);
         row.addView(lines);
         weatherBox = row;
@@ -350,9 +380,7 @@ final class WeatherMode implements ScreenMode {
 
         LinearLayout header = horizontal(Gravity.TOP);
         LinearLayout left = vertical(Gravity.START);
-        place = text(20, fg);
         updated = text(14, dim);
-        left.addView(place);
         left.addView(updated);
         header.addView(left, fillWidth());
         LinearLayout right = vertical(Gravity.END);
@@ -377,6 +405,9 @@ final class WeatherMode implements ScreenMode {
         now.addView(temp);
         now.addView(condition);
         now.addView(detail);
+        LinearLayout pin = placeRow(17, 19);
+        pin.setPadding(0, dp(6), 0, 0);
+        now.addView(pin);
         middle.addView(now, fillWidth());
 
         daysCol = vertical(Gravity.NO_GRAVITY);
@@ -439,6 +470,19 @@ final class WeatherMode implements ScreenMode {
                 ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.CENTER));
         root.addView(stack, fillHeight());
         return root;
+    }
+
+    /** Location pin (outline, in the text color) followed by the place name; sets {@link #place}. */
+    private LinearLayout placeRow(float textSp, int pinDp) {
+        LinearLayout row = horizontal(Gravity.CENTER_VERTICAL);
+        ImageView pin = new ImageView(context);
+        pin.setImageResource(R.drawable.ic_pin);
+        pin.setColorFilter(fg);
+        row.addView(pin, new LinearLayout.LayoutParams(dp(pinDp), dp(pinDp)));
+        place = text(textSp, fg);
+        place.setPadding(dp(6), 0, 0, 0);
+        row.addView(place);
+        return row;
     }
 
     private TextView label(String s) {

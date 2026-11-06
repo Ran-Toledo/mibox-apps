@@ -20,8 +20,21 @@ Plain Java + Android framework, no AndroidX, built without Gradle. Package `dev.
   Location is found by city name in the settings (or set over adb), units °C/°F. Data from
   [Open-Meteo](https://open-meteo.com) (free, no API key, CC BY 4.0; credited on screen). The forecast is fetched only
   while the screensaver runs, at most every 30 min, and cached; when offline the last forecast is shown with
-  "Updated N h ago", for up to 12 h. Needs the `INTERNET` permission. Measured on a Mi Box S: about 36 MB while running
+  "Updated N h ago", for up to 12 h. The city name shows under the conditions with a location pin.
+  Needs the `INTERNET` permission. Measured on a Mi Box S: about 36 MB while running
   (clock mode: 30 MB, of which 16 MB is the screen buffer).
+
+- **Weather photo backgrounds** (Weather background → Photos): a photo matching the current weather (clear/partly
+  cloudy by day or night, cloudy, fog, rain, storm, snow), picked at random from a pool and changed every 10 min
+  (5–60, a setting) and whenever the weather changes, with a cross-fade under a 40% dark layer; text turns white.
+  - The pools are [res/raw/backgrounds.json](res/raw/backgrounds.json) (48 free [Unsplash](https://unsplash.com/license)
+    photos; each entry links to the photo's page and photographer). The app re-reads this file from the repo's `main`
+    branch once a day, so photos can be added or removed by editing it on GitHub, without reinstalling; until then,
+    or offline, it uses the copy built into the app.
+  - Photos are downloaded when needed (1280×720, ~150–350 KB each); the next one downloads while the current one
+    shows, so a change never waits. At most 8 are kept on the box (~2–3 MB, in the app's cache folder); only the
+    shown photo is in memory (two during the 1.2 s fade). Offline, it rotates through what is cached, or shows the
+    solid color.
 
 Design concepts for the Weather and Now Playing modes: [docs/concepts](docs/concepts/).
 
@@ -58,7 +71,8 @@ Weather:
 ```
 adb shell am start -n dev.mibox.screensaver/.SettingsActivity --es mode weather --ef lat 32.08 --ef lon 34.78 --es place "Tel Aviv" --es units c --es wx_layout board
 ```
-`mode` is `clock` or `weather`; `units` `c` or `f`; `wx_layout` `glance` (clock first) or `board`.
+`mode` is `clock` or `weather`; `units` `c` or `f`; `wx_layout` `glance` (clock first) or `board`;
+`--es bg_style photo` (or `solid`) and `--ei bg_minutes 10` for the photo background.
 The settings activity is exported so adb can configure it; any app on the device could do the same. It only changes
 display preferences.
 
