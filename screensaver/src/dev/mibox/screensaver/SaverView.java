@@ -53,9 +53,9 @@ final class SaverView extends FrameLayout {
     }
 
     private static ScreenMode createMode(Context context, SharedPreferences p) {
-        if (Prefs.MODE_WEATHER.equals(Prefs.mode(p))) {
-            return new WeatherMode(context, p);
-        }
+        String mode = Prefs.mode(p);
+        if (Prefs.MODE_WEATHER.equals(mode)) return new WeatherMode(context, p);
+        if (Prefs.MODE_MUSIC.equals(mode)) return new NowPlayingMode(context, p);
         return new TextMode(context);
     }
 

@@ -34,6 +34,11 @@ final class Prefs {
 
     static final String MODE_TEXT = "text";
     static final String MODE_WEATHER = "weather";
+    static final String MODE_MUSIC = "music";
+    /** Now Playing layout: NP_RIBBON (your text, track ribbon at the bottom) or NP_ALBUM (cover focus). */
+    static final String NP_LAYOUT = "np_layout";
+    static final String NP_RIBBON = "ribbon";
+    static final String NP_ALBUM = "album";
     static final String UNITS_C = "c";
     static final String UNITS_F = "f";
     static final String LAYOUT_GLANCE = "glance";
@@ -74,9 +79,10 @@ final class Prefs {
         return Typeface.create(family, p.getBoolean(BOLD, false) ? Typeface.BOLD : Typeface.NORMAL);
     }
 
-    /** MODE_TEXT or MODE_WEATHER; anything else (including "clock" from v1.3/v1.4) is Text. */
+    /** MODE_TEXT, MODE_WEATHER or MODE_MUSIC; anything else (including "clock" from v1.3/v1.4) is Text. */
     static String mode(SharedPreferences p) {
-        return MODE_WEATHER.equals(p.getString(MODE, MODE_TEXT)) ? MODE_WEATHER : MODE_TEXT;
+        String m = p.getString(MODE, MODE_TEXT);
+        return MODE_WEATHER.equals(m) || MODE_MUSIC.equals(m) ? m : MODE_TEXT;
     }
 
     static boolean hasLocation(SharedPreferences p) {

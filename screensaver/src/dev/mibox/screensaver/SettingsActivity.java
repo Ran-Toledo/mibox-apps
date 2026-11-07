@@ -3,10 +3,12 @@ package dev.mibox.screensaver;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.DialogInterface;
+import android.content.ComponentName;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.graphics.Typeface;
 import android.os.Bundle;
+import android.provider.Settings;
 import android.text.InputType;
 import android.view.Gravity;
 import android.view.View;
@@ -30,7 +32,7 @@ import java.util.List;
  *   am start -n dev.mibox.screensaver/.SettingsActivity --es text 'Hello\nWorld' --es fg '#FFFFFF'
  *       --es bg '#000000' --ei size 120 --ez drift true --ez dim false --es font sans-serif-light --ez bold false
  *       --es mode weather --ef lat 32.81 --ef lon 35.0 --es place Haifa --es units c --es wx_layout glance
- *       --es bg_style photo --ei bg_minutes 10
+ *       --es bg_style photo --ei bg_minutes 10 --es np_layout ribbon
  */
 public class SettingsActivity extends Activity {
     private static final String[] COLOR_NAMES = {
@@ -50,8 +52,11 @@ public class SettingsActivity extends Activity {
             "sans-serif-condensed", "sans-serif-condensed-light", "serif", "monospace", "serif-monospace",
             "casual", "cursive", "sans-serif-smallcaps"};
 
-    private static final String[] MODE_NAMES = {"Text", "Weather"};
-    private static final String[] MODE_VALUES = {Prefs.MODE_TEXT, Prefs.MODE_WEATHER};
+    private static final String[] MODE_NAMES = {"Text", "Weather", "Now Playing (music; your text when nothing plays)"};
+    private static final String[] MODE_VALUES = {Prefs.MODE_TEXT, Prefs.MODE_WEATHER, Prefs.MODE_MUSIC};
+    private static final String[] NP_LAYOUT_NAMES = {"Your text, with the track in a ribbon at the bottom",
+            "Album cover, title and progress, full screen"};
+    private static final String[] NP_LAYOUT_VALUES = {Prefs.NP_RIBBON, Prefs.NP_ALBUM};
     private static final String[] UNIT_NAMES = {"Celsius (°C)", "Fahrenheit (°F)"};
     private static final String[] UNIT_VALUES = {Prefs.UNITS_C, Prefs.UNITS_F};
     private static final String[] LAYOUT_NAMES = {"Your text, with one weather line under it", "Full forecast board"};
@@ -67,6 +72,7 @@ public class SettingsActivity extends Activity {
     private Spinner mode;
     private Spinner units;
     private Spinner wxLayout;
+    private Spinner npLayout;
     private TextView placeLabel;
     private EditText city;
     private EditText text;
@@ -115,6 +121,7 @@ public class SettingsActivity extends Activity {
         }
         if (e.containsKey(Prefs.WX_UNITS)) { ed.putString(Prefs.WX_UNITS, e.getString(Prefs.WX_UNITS)); any = true; }
         if (e.containsKey(Prefs.WX_LAYOUT)) { ed.putString(Prefs.WX_LAYOUT, e.getString(Prefs.WX_LAYOUT)); any = true; }
+        if (e.containsKey(Prefs.NP_LAYOUT)) { ed.putString(Prefs.NP_LAYOUT, e.getString(Prefs.NP_LAYOUT)); any = true; }
         if (e.containsKey(Prefs.BG_STYLE)) { ed.putString(Prefs.BG_STYLE, e.getString(Prefs.BG_STYLE)); any = true; }
         if (e.containsKey(Prefs.BG_MINUTES)) {
             ed.putInt(Prefs.BG_MINUTES, e.getInt(Prefs.BG_MINUTES, Prefs.DEFAULT_BG_MINUTES));
@@ -217,6 +224,19 @@ public class SettingsActivity extends Activity {
                 prefs.getInt(Prefs.BG_MINUTES, Prefs.DEFAULT_BG_MINUTES))));
         col.addView(bgMinutes, wide());
 
+        TextView npTitle = new TextView(this);
+        npTitle.setText("Now Playing");
+        npTitle.setTextSize(22);
+        npTitle.setPadding(0, dp(28), 0, 0);
+        col.addView(npTitle);
+        col.addView(label("Shows SoundCloud, YouTube, YouTube Music and Spotify while they play. "
+                + (hasMediaAccess() ? "Notification access: granted."
+                : "Notification access: NOT granted. Grant it once from a computer:\n"
+                +NowPlayingMode.ACCESS_COMMAND)));
+        col.addView(label("Now Playing layout"));
+        npLayout = choice(NP_LAYOUT_NAMES, NP_LAYOUT_VALUES, prefs.getString(Prefs.NP_LAYOUT, Prefs.NP_RIBBON));
+        col.addView(npLayout, wide());
+
         LinearLayout buttons = new LinearLayout(this);
         buttons.setGravity(Gravity.START);
         Button save = new Button(this);
@@ -260,6 +280,7 @@ public class SettingsActivity extends Activity {
                 .putString(Prefs.MODE, MODE_VALUES[mode.getSelectedItemPosition()])
                 .putString(Prefs.WX_UNITS, UNIT_VALUES[units.getSelectedItemPosition()])
                 .putString(Prefs.WX_LAYOUT, LAYOUT_VALUES[wxLayout.getSelectedItemPosition()])
+                .putString(Prefs.NP_LAYOUT, NP_LAYOUT_VALUES[npLayout.getSelectedItemPosition()])
                 .putString(Prefs.BG_STYLE, BG_STYLE_VALUES[bgStyle.getSelectedItemPosition()])
                 .putInt(Prefs.BG_MINUTES, BG_MINUTES[bgMinutes.getSelectedItemPosition()])
                 .apply();
@@ -385,6 +406,17 @@ public class SettingsActivity extends Activity {
                     }
                 })
                 .show();
+    }
+
+    /** True if MediaListener is an approved notification listener (needed to read media sessions). */
+    private boolean hasMediaAccess() {
+        String enabled = Settings.Secure.getString(getContentResolver(), "enabled_notification_listeners");
+        if (enabled == null) return false;
+        ComponentName me = new ComponentName(this, MediaListener.class);
+        for (String s : enabled.split(":")) {
+            if (me.equals(ComponentName.unflattenFromString(s))) return true;
+        }
+        return false;
     }
 
     private static int indexOfIgnoreCase(List<String> list, String value) {

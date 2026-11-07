@@ -4,7 +4,7 @@ import android.content.SharedPreferences;
 import android.view.View;
 
 /**
- * One thing the screensaver can show (text, weather, ...). SaverView hosts the active mode,
+ * One thing the screensaver can show (text, weather, now playing). SaverView hosts the active mode,
  * paints the background and drifts the mode's view to prevent burn-in.
  */
 interface ScreenMode {

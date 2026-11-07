@@ -8,6 +8,15 @@
     <!-- Weather mode: forecasts from api.open-meteo.com. -->
     <uses-permission android:name="android.permission.INTERNET" />
 
+    <!-- Now Playing: lets the screensaver read these music apps' names ("SoundCloud"). Keep in sync
+         with NowPlayingMode.APPS. -->
+    <queries>
+        <package android:name="com.soundcloud.android" />
+        <package android:name="com.google.android.youtube.tv" />
+        <package android:name="com.google.android.youtube.tvmusic" />
+        <package android:name="com.spotify.tv.android" />
+    </queries>
+
     <application
         android:allowBackup="false"
         android:banner="@drawable/banner"
@@ -28,6 +37,18 @@
             <meta-data
                 android:name="android.service.dream"
                 android:resource="@xml/dream_info" />
+        </service>
+
+        <!-- Now Playing: an approved notification listener is required to read media sessions.
+             It unbinds itself on connect and never reads notifications (see MediaListener). -->
+        <service
+            android:name=".MediaListener"
+            android:exported="true"
+            android:label="@string/dream_label"
+            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
+            <intent-filter>
+                <action android:name="android.service.notification.NotificationListenerService" />
+            </intent-filter>
         </service>
 
         <!-- Settings: reachable from the TV apps row, from the screensaver settings, or via adb extras. -->

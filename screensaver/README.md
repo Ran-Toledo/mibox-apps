@@ -1,6 +1,6 @@
 # Simple Screensaver
 
-A minimal Android TV screensaver (`DreamService`): large text (with optional time and date) on a solid background, or the weather.
+A minimal Android TV screensaver (`DreamService`): large text (with optional time and date) on a solid background, the weather, or the music that is playing.
 Plain Java + Android framework, no AndroidX, built without Gradle. Package `dev.mibox.screensaver`, minSdk 26.
 
 ![Screensaver with the default time and date](docs/screenshot.png)
@@ -36,10 +36,29 @@ Plain Java + Android framework, no AndroidX, built without Gradle. Package `dev.
     shown photo is in memory (two during the 1.2 s fade). Offline, it rotates through what is cached, or shows the
     solid color.
 
+- **Now Playing mode** (Show → Now Playing): the track playing in SoundCloud, YouTube, YouTube Music or Spotify
+  (other apps, such as live TV, are ignored), in one of two layouts:
+  - *Ribbon* (default): the Text mode text, with cover, title, artist and progress in a slim ribbon at the bottom
+  - *Album*: large cover, title, artist, album, progress and "Up next" (when the app shares its queue) on a
+    background tinted from the cover; the app name and a small clock on top
+
+  When nothing is playing it shows the Text mode text. The cover and progress bar dim after 5 min on one track.
+  Needs **notification access, granted once over adb** (Android TV has no screen for it):
+  ```
+  adb shell cmd notification allow_listener dev.mibox.screensaver/dev.mibox.screensaver.MediaListener
+  ```
+  Android lets only apps with an approved notification listener read media sessions. The listener
+  (`MediaListener`) reads no notifications and unbinds itself as soon as the system connects it, so it does not keep
+  the app running; sessions are followed only while the screensaver runs. Covers come from the app's metadata
+  (SoundCloud's are downloaded from its image server, ~30–60 KB). Measured on a Mi Box S: about 32 MB while running,
+  the same as Text mode. Note: video apps (YouTube) keep the screen awake while playing, so the screensaver may only
+  start with music that plays in the background.
+  Undo: `adb shell cmd notification disallow_listener dev.mibox.screensaver/dev.mibox.screensaver.MediaListener`.
+
 Design concepts for the Weather and Now Playing modes: [docs/concepts](docs/concepts/).
 
 Defaults: `{time}\n{date}`, white on black, size 96, Roboto regular, drift on, dim off, mode Text;
-weather: no location, °C, text-first layout.
+weather: no location, °C, text-first layout; Now Playing: ribbon layout.
 
 ## Build
 Requires the Android SDK (platforms\android-34, build-tools\34.0.0) and two JDKs: 21 and 17 (javac only).
@@ -71,7 +90,7 @@ Weather:
 ```
 adb shell am start -n dev.mibox.screensaver/.SettingsActivity --es mode weather --ef lat 32.08 --ef lon 34.78 --es place "Tel Aviv" --es units c --es wx_layout board
 ```
-`mode` is `text` or `weather`; `units` `c` or `f`; `wx_layout` `glance` (text first) or `board`;
+`mode` is `text`, `weather` or `music` (Now Playing, with `--es np_layout ribbon` or `album`); `units` `c` or `f`; `wx_layout` `glance` (text first) or `board`;
 `--es bg_style photo` (or `solid`) and `--ei bg_minutes 10` for the photo background.
 The settings activity is exported so adb can configure it; any app on the device could do the same. It only changes
 display preferences.

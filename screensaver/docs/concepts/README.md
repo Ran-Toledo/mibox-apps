@@ -1,6 +1,6 @@
 # Screensaver concepts: Weather and Now Playing
 
-Proposed layouts for two new screensaver modes. Weather is implemented (both layouts); Now Playing is not yet. Drawn at 1280×720 (16:9; ×1.5 for a 1080p TV),
+Proposed layouts for two new screensaver modes. Both are implemented, each with both layouts. Drawn at 1280×720 (16:9; ×1.5 for a 1080p TV),
 Roboto throughout to match the built-in font picker. Live canvas (private to the owner):
 https://claude.ai/artifact/9jCjz1mnUkxwvKLTFcFAEa
 
