@@ -5,6 +5,7 @@
 .DESCRIPTION
     Output: build\simple-screensaver.apk, signed with the standard Android debug keystore
     (%USERPROFILE%\.android\debug.keystore, created on first run).
+    Intermediates go to build\obj and are deleted after a successful build.
     Install separately: adb -s <serial> install -r build\simple-screensaver.apk
 
 .PARAMETER Sdk
@@ -41,8 +42,10 @@ function Exec([string]$what, [scriptblock]$cmd) {
     if ($LASTEXITCODE -ne 0) { throw "$what failed (exit $LASTEXITCODE)" }
 }
 
-$out = Join-Path $here 'build'
-if (Test-Path $out) { Remove-Item -Recurse -Force $out }
+# build\ holds only the signed APK; intermediates go to build\obj and are deleted on success.
+$dist = Join-Path $here 'build'
+$out = Join-Path $dist 'obj'
+if (Test-Path $dist) { Remove-Item -Recurse -Force $dist }
 New-Item -ItemType Directory -Force "$out\gen", "$out\classes", "$out\dex" | Out-Null
 
 Exec 'aapt2 compile' { & "$bt\aapt2.exe" compile --dir "$here\res" -o "$out\res.zip" }
@@ -76,7 +79,8 @@ if (-not (Test-Path $ks)) {
             -keyalg RSA -keysize 2048 -validity 10000 -dname 'CN=Android Debug,O=Android,C=US'
     }
 }
-$apk = Join-Path $out 'simple-screensaver.apk'
-Exec 'apksigner' { & "$bt\apksigner.bat" sign --ks $ks --ks-pass pass:android --key-pass pass:android --out $apk "$out\aligned.apk" }
+$apk = Join-Path $dist 'simple-screensaver.apk'
+Exec 'apksigner' { & "$bt\apksigner.bat" sign --v4-signing-enabled false --ks $ks --ks-pass pass:android --key-pass pass:android --out $apk "$out\aligned.apk" }
 Exec 'apksigner verify' { & "$bt\apksigner.bat" verify $apk }
+Remove-Item -Recurse -Force $out
 Write-Host "Built $apk ($([math]::Round((Get-Item $apk).Length / 1KB)) KB)"

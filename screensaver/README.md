@@ -68,7 +68,8 @@ Point the script at them with `ANDROID_HOME`, `JAVA_HOME` (JDK 21) and `JDK17_HO
 .\build.ps1
 ```
 Output: `build\simple-screensaver.apk`, signed with the debug keystore `%USERPROFILE%\.android\debug.keystore`
-(created on first run). It is a debug-signed build for personal sideloading.
+(created on first run). It is a debug-signed build for personal sideloading. `build\` holds only this APK;
+intermediates go to `build\obj` and are deleted after a successful build (kept on failure for debugging).
 
 ## Install and select
 ```powershell

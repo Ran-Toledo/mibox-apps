@@ -43,7 +43,8 @@ Same requirements as the screensaver (`ANDROID_HOME`, `JAVA_HOME` for JDK 21, `J
 ```powershell
 .\build.ps1
 ```
-Output: `build\task-manager.apk` (debug-signed).
+Output: `build\task-manager.apk` (debug-signed). `build\` holds only this APK; intermediates go to
+`build\obj` and are deleted after a successful build (kept on failure for debugging).
 
 ## Install
 ```powershell
