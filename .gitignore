@@ -1,4 +1,5 @@
 build/
+releases/
 *.apk
 *.aab
 *.dex
